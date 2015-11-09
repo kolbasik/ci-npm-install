@@ -1,3 +1,4 @@
+var Promise = require("bluebird");
 var crypto = require('crypto');
 var path = require("path");
 var cmd = require('child_process');
@@ -23,95 +24,115 @@ var argv = require('yargs')
     })
     .argv;
 
-start();
+start()
+    .then(function() {
+        console.log('app: done.');
+    }, function (error) {
+        console.error("app: " + error.toString() + error.stack);
+    });
 
 function start() {
-    loadConfig(argv.config, function(error, config) {
-        if (error) throw error;
+    return loadJson(argv.config)
+        .then(function (config) {
+            var tasks = Object.keys(config.packages).map(function(file) {
+                console.log('file: ' + file + ' found.');
 
-        var count = 0;
-        Object.keys(config.packages).forEach(function(file) {
-            var meta = config.packages[file];
+                return computeHash(file, argv.hash)
+                    .then(function (newHash) {
+                        var meta = config.packages[file];
+                        var oldHash = meta.hash;
 
-            console.log("file: " + file + " has old hash: " + meta.hash);
-
-            fs.exists(file, function (exists) {
-                if (!exists) {
-                    console.log("file: " + file + " does not exist.");
-                    return;
-                }
-
-                ++count;
-                computeHash(file, argv.hash, function(error, hash) {
-                    if (error) throw error;
-
-                    console.log("file: " + file + " has new hash: " + hash);
-                    if (meta.hash !== hash) {
-                        var command = (meta.command || 'echo unknown command for: ${file}:${hash}')
-                            .replace('${hash}', hash).replace('${file}', file);
-                        execCommand(command, path.dirname(file), function(error, code) {
-                            if (error) throw error;
-
-                            meta.hash = hash;
-                            console.log("file: " + file + " updated.");
-
-                            if (--count == 0) {
-                                saveConfig(argv.config, config, function (error) {
-                                    if (error) throw error;
-
-                                    console.log('app: changes is saved!');
+                        console.log("file: " + file + " has old '" + oldHash + "' and new '" + newHash + "' hashes.");
+                        if (oldHash === newHash) {
+                            return Promise.resolve(newHash);
+                        } else {
+                            var command = (meta.command || 'echo unknown command for: ${file}:${hash}')
+                                .replace('${hash}', newHash).replace('${file}', file);
+                            return execCommand(command, path.dirname(file))
+                                .then(function () {
+                                    meta.hash = newHash;
+                                    console.log("file: " + file + " updated.");
+                                    return newHash;
                                 });
-                            }
-                        });
-                    }
+                        }
+                    });
+            });
+
+            return Promise.all(tasks)
+                .then(function() {
+                    return saveJson(argv.config, config);
+                })
+                .then(function(){
+                    console.log('app: changes is saved!');
                 });
+        });
+}
+
+function loadJson (filePath) {
+    return new Promise(function(resolve, reject){
+        fs.readFile(filePath, 'utf8', function(error, content) {
+            if (error) {
+                reject(error);
+            } else {
+                resolve(JSON.parse(content));
+            }
+        });
+    });
+}
+
+function saveJson (filePath, data) {
+    return new Promise(function(resolve, reject) {
+		var json = JSON.stringify(data);
+        fs.writeFile(filePath, json, 'utf8', function(error) {
+            if (error) {
+                reject(error);
+            } else {
+                resolve(json);
+            }
+        });
+    });
+}
+
+function computeHash (filePath, hashName) {
+    return new Promise(function(resolve, reject) {
+
+        var hashSum = crypto.createHash(hashName);
+
+        fs.exists(filePath, function (exists) {
+            if (!exists) {
+                console.log("file: " + filePath + " does not exist.");
+                return resolve('');
+            }
+
+            var s = fs.ReadStream(filePath);
+            s.on('data', function (data) {
+                hashSum.update(data);
+            });
+            s.on('end', function () {
+                var hex = hashSum.digest('hex');
+                resolve(hex);
             });
         });
     });
 }
 
-function loadConfig (configPath, callback) {
-    fs.readFile(configPath, 'utf8', function(error, content) {
-        if (error) {
-            callback(error, null);
-        } else {
-            callback(null, JSON.parse(content))
-        }
-    });
-}
-
-function saveConfig (configPath, config, callback) {
-    fs.writeFile(configPath, JSON.stringify(config), 'utf8', callback);
-}
-
-function computeHash (fileName, hashName, callback) {
-    var hashSum = crypto.createHash(hashName);
-
-    var s = fs.ReadStream(fileName);
-    s.on('data', function(data) {
-        hashSum.update(data);
-    });
-    s.on('end', function() {
-        var hex = hashSum.digest('hex');
-        callback(null, hex);
-    });
-}
-
-function execCommand (command, cwd, callback) {
-    var child = cmd.exec(command, {
-        cwd: cwd
-    }, function(error) {
-        if (error) {
-            callback(error, null)
-        }
-    });
-    child.stdout.on('data', function (data) {
-        console.log(child.pid + ':' + data);
-    });
-    child.stderr.on('data', function (data) {
-        console.error(child.pid + ':' + data);
-    });
-    child.on('close', function (code) {
-        callback(null, code);
+function execCommand (command, cwd) {
+    return new Promise(function(resolve, reject) {
+        var child = cmd.exec(command, {
+            cwd: cwd
+        }, function (error) {
+            if (error) {
+                reject(error);
+            }
+        });
+        child.stdout.on('data', function (data) {
+            console.log(child.pid + ':' + data);
+        });
+        child.stderr.on('data', function (data) {
+            console.error(child.pid + ':' + data);
+        });
+        child.on('close', function (code) {
+            resolve(code);
+        });
     });
 }
