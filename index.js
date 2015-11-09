@@ -47,7 +47,7 @@ function start() {
 
                     console.log("file: " + file + " has new hash: " + hash);
                     if (meta.hash !== hash) {
-                        var command = (meta.command2 || 'echo unknown command for: ${file}:${hash}')
+                        var command = (meta.command || 'echo unknown command for: ${file}:${hash}')
                             .replace('${hash}', hash).replace('${file}', file);
                         execCommand(command, path.dirname(file), function(error, code) {
                             if (error) throw error;
