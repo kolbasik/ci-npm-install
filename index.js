@@ -32,112 +32,85 @@ var argv = require('yargs')
     })
     .argv;
 
-start()
-    .finally(function () {
-        console.log('app: done.');
-    });
+start().finally(() => console.log('app: done.'));
 
 function start() {
-    return Promise.join(
-        loadJson(argv['config-file']),
-        loadJson(argv['hash-file']),
-        function (config, hashes) {
-            return Promise.map(Object.keys(config.files), function (file) {
-                console.log('file: ' + file + ' found.');
+    return Promise.coroutine(function* () {
+        var config = yield loadJson(argv['config-file']);
+        var hashes = yield loadJson(argv['hash-file']);
 
-                return computeHash(file, argv['hash-alg'])
-                    .then(function (newHash) {
-                        try {
-                            var oldHash = hashes[file];
-                            if (oldHash === newHash) {
-                                return Promise.resolve(newHash);
-                            } else {
-                                var meta = config.files[file];
-                                var command = (meta.command || 'echo unknown command for: ${file}:${hash}')
-                                    .replace('${file}', file).replace('${hash}', newHash);
-                                return execCommand(command, path.dirname(file))
-                                    .then(function () {
-                                        hashes[file] = newHash;
-                                        console.log(("file: " + file + " updated.").green);
-                                        return newHash;
-                                    });
-                            }
-                        } finally {
-                            console.log("file: " + file + " has old '" + oldHash + "' and new '" + newHash + "' hashes.");
-                        }
-                    })
-                    .catch(function (error) {
-                        console.error(error.toString().red);
-                    });
-            })
-            .finally(function () {
-                return saveJson(argv['hash-file'], hashes).then(function () {
-                    console.log('app: hashes is saved!');
-                });
-            });
-        });
+        yield Promise.map(Object.keys(config.files),
+            Promise.coroutine(function* (file) {
+                try {
+                    console.log(`file: ${file} found.`);
+
+                    var oldHash = hashes[file];
+                    var newHash = yield computeHash(file, argv['hash-alg']);
+
+                    console.log(`file: ${file} has old '${oldHash}' and new '${newHash}' hashes.`);
+
+                    if (oldHash !== newHash) {
+                        console.log((`file: ${file} updated.`).yellow);
+
+                        var meta = config.files[file];
+                        var command = (meta.command || 'echo unknown command for: ${file}:${hash}')
+                            .replace('${file}', file).replace('${hash}', newHash);
+                        yield execCommand(command, path.dirname(file));
+                        hashes[file] = newHash;
+
+                        console.log((`file: ${file} handled.`).green);
+                    }
+
+                    return newHash;
+                } catch (e) {
+                    console.error(`file: ${file} ${e.toString()}`.red);
+                }
+            }));
+
+        yield saveJson(argv['hash-file'], hashes);
+        console.log('app: hashes is saved!');
+    }).call(this);
 }
 
 function loadJson(filePath) {
-    return new Promise(function (resolve) {
-        fs.readFile(filePath, 'utf8', function (error, content) {
-            var json = error ? {} : JSON.parse(content);
-            resolve(json);
-        });
+    return new Promise(resolve => {
+        fs.readFile(filePath, 'utf8',
+            (error, content) => resolve(error ? {} : JSON.parse(content)));
     });
 }
 
 function saveJson(filePath, data) {
-    return new Promise(function (resolve, reject) {
+    return new Promise((resolve, reject) => {
         var json = JSON.stringify(data);
-        fs.writeFile(filePath, json, 'utf8', function (error) {
-            if (error) {
-                reject(error);
-            } else {
-                resolve(json);
-            }
-        });
+        fs.writeFile(filePath, json, 'utf8',
+            error => error ? reject(error) : resolve(json));
     });
 }
 
 function computeHash(filePath, hashName) {
-    return new Promise(function (resolve) {
-        fs.exists(filePath, function (exists) {
-            var hashSum = crypto.createHash(hashName);
+    return new Promise(resolve => {
+        fs.exists(filePath, exists => {
             if (!exists) {
-                console.log("file: " + filePath + " does not exist.");
+                console.log(`file: ${filePath} does not exist.`);
                 return resolve(null);
             }
-
+            var hashSum = crypto.createHash(hashName);
             var s = fs.ReadStream(filePath);
-            s.on('data', function (data) {
-                hashSum.update(data);
-            });
-            s.on('end', function () {
-                var hex = hashSum.digest('hex');
-                resolve(hex);
-            });
+            s.on('data', data => hashSum.update(data));
+            s.on('end', () => resolve(hashSum.digest('hex')));
         });
     });
 }
 
 function execCommand(command, cwd) {
-    return new Promise(function (resolve, reject) {
-        var child = cmd.exec(command, {
-            cwd: cwd
-        }, function (error) {
-            if (error) {
-                reject(error);
-            }
+    return new Promise((resolve, reject) => {
+        var child = cmd.exec(command, { cwd: cwd }, error => error && reject(error));
+        child.stdout.on('data', data => {
+            console.log((`pid(${child.pid}): ${data}`).magenta);
         });
-        child.stdout.on('data', function (data) {
-            console.log(('pid(' + child.pid + '): ' + data).magenta);
+        child.stderr.on('data', data => {
+            console.error((`pid(${child.pid}): ${data}`).magenta);
         });
-        child.stderr.on('data', function (data) {
-            console.error(('pid(' + child.pid + '): ' + data).magenta);
-        });
-        child.on('close', function (code) {
-            resolve(code);
-        });
+        child.on('close', code => resolve(code));
     });
 }
