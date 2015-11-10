@@ -1,6 +1,8 @@
 {
   "name": "ci-npm-install",
-  "version": "1.0.0",
+  "version": "1.1.0",
+  "author": "kolbasik",
+  "license": "MIT",
   "description": "",
   "main": "index.js",
   "dependencies": {
@@ -20,10 +22,16 @@
     "type": "git",
     "url": "https://github.com/kolbasik/ci-npm-install.git"
   },
-  "author": "",
-  "license": "MIT",
   "bugs": {
     "url": "https://github.com/kolbasik/ci-npm-install/issues"
   },
-  "homepage": "https://github.com/kolbasik/ci-npm-install"
+  "homepage": "https://github.com/kolbasik/ci-npm-install",
+  "files": [
+    "index.js",
+    "lib",
+    "bin"
+  ],
+  "bin": {
+    "file-check": "./bin/file-check.js"
+  }
 }
