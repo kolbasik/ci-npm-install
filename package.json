@@ -8,10 +8,13 @@
     "colors": "^1.1.2",
     "yargs": "^3.29.0"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "chai": "^3.4.1",
+    "mocha": "^2.3.3"
+  },
   "scripts": {
-    "file-check": "node index.js --config-file=./file-check.json --hash-alg=md5 --hash-file=./file-check.hash",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node index.js --config-file=./file-check.json --hash-alg=md5 --hash-file=./file-check.hash",
+    "test": "mocha --harmony --recursive -t 500"
   },
   "repository": {
     "type": "git",

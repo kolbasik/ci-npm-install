@@ -1,0 +1,7 @@
+{
+  "files": {
+    "./test/.tmp/config.json": {
+      "command": "echo ${file}:${hash}"
+    }
+  }
+}
