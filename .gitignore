@@ -1,5 +1,8 @@
 # Created by https://www.gitignore.io/api/node,webstorm
 
+### TEMP ###
+file-check.hash
+
 ### Node ###
 # Logs
 logs
@@ -32,8 +35,6 @@ node_modules
 
 
 ### WebStorm ###
-
-*.iml
 
 ## Directory-based project format:
 .idea/

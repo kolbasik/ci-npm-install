@@ -1,0 +1,13 @@
+{
+  "files": {
+    "./bower.json": {
+      "command": "rm -rf bower_components && bower install"
+    },
+    "./package.json": {
+      "command": "rm -rf node_modules && npm install"
+    },
+    "./LICENSE": {
+      "command": "echo ${file}:${hash}"
+    }
+  }
+}

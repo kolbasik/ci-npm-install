@@ -1,1 +1,0 @@
-{"packages":{"./bower.json":{"hash":"","command":"rm -rf bower_components && bower install"},"./package.json":{"hash":"15039723cf5b94b88e75f1ee4754835bd1323d04","command":"rm -rf node_modules && npm install"},"./LICENSE":{"hash":"0173cb643e38c5159f67a708ca6ccef55f7bcb4d","command":"echo ${hash}:${file}"}}}

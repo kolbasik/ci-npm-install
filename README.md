@@ -3,24 +3,21 @@
 ## command
 
 ```
-$ node index.js --config=.npm-watch.json --hash=md5
+$ node index.js --config-file=file-check.json --hash-alg=md5 --hash-file=file-check.hash
 ```
 
 ## config
 
 ```
 {
-  "packages": {
+  "files": {
     "./bower.json": {
-      "hash": "",
       "command": "rm -rf bower_components && bower install"
     },
     "./package.json": {
-      "hash": "",
       "command": "rm -rf node_modules && npm install"
     },
     "./LICENSE": {
-      "hash": "",
       "command": "echo ${hash}:${file}"
     }
   }
