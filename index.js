@@ -1,4 +1,5 @@
-require('colors');
+var colors = require('colors');
+colors.setTheme(require('colors/themes/generic-logging'));
 
 var Promise = require('bluebird');
 var crypto = require('crypto');
@@ -42,7 +43,7 @@ function start() {
         yield Promise.map(Object.keys(config.files),
             Promise.coroutine(function* (file) {
                 try {
-                    console.log(`file: ${file} found.`);
+                    console.log(`file: ${file} found.`.info);
 
                     var oldHash = hashes[file];
                     var newHash = yield computeHash(file, argv['hash-alg']);
@@ -50,7 +51,7 @@ function start() {
                     console.log(`file: ${file} has old '${oldHash}' and new '${newHash}' hashes.`);
 
                     if (oldHash !== newHash) {
-                        console.log((`file: ${file} updated.`).yellow);
+                        console.log(`file: ${file} changed.`.info);
 
                         var meta = config.files[file];
                         var command = (meta.command || 'echo unknown command for: ${file}:${hash}')
@@ -58,12 +59,12 @@ function start() {
                         yield execCommand(command, path.dirname(file));
                         hashes[file] = newHash;
 
-                        console.log((`file: ${file} handled.`).green);
+                        console.log(`file: ${file} handled.`.info);
                     }
 
                     return newHash;
                 } catch (e) {
-                    console.error(`file: ${file} ${e.toString()}`.red);
+                    console.error(`file: ${file} ${e.toString()}`.error);
                 }
             }));
 
@@ -91,7 +92,7 @@ function computeHash(filePath, hashName) {
     return new Promise(resolve => {
         fs.exists(filePath, exists => {
             if (!exists) {
-                console.log(`file: ${filePath} does not exist.`);
+                console.log(`file: ${filePath} does not exist.`.warn);
                 return resolve(null);
             }
             var hashSum = crypto.createHash(hashName);
@@ -106,10 +107,10 @@ function execCommand(command, cwd) {
     return new Promise((resolve, reject) => {
         var child = cmd.exec(command, { cwd: cwd }, error => error && reject(error));
         child.stdout.on('data', data => {
-            console.log((`pid(${child.pid}): ${data}`).magenta);
+            console.log(`pid(${child.pid}): ${data}`.verbose);
         });
         child.stderr.on('data', data => {
-            console.error((`pid(${child.pid}): ${data}`).magenta);
+            console.error(`pid(${child.pid}): ${data}`.verbose);
         });
         child.on('close', code => resolve(code));
     });

@@ -3,7 +3,7 @@
 ## command
 
 ```
-$ node index.js --config-file=file-check.json --hash-alg=md5 --hash-file=file-check.hash
+$ node index.js --config-file=./file-check.json --hash-alg=md5 --hash-file=./file-check.hash
 ```
 
 ## config

@@ -10,7 +10,7 @@
   },
   "devDependencies": {},
   "scripts": {
-    "update": "node index.js --config=.npm-watch.json --hash=md5",
+    "file-check": "node index.js --config-file=./file-check.json --hash-alg=md5 --hash-file=./file-check.hash",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
